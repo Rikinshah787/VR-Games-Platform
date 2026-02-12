@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     description: 'Slice flying fruits with your finger swipe! Avoid bombs!',
     color: '#ff4400',
     path: 'games/fruit-ninja/index.html',
-    comingSoon: false
+    comingSoon: true
   });
 
   platform.init();
