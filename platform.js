@@ -230,7 +230,18 @@ class GamePlatform {
 document.addEventListener('DOMContentLoaded', () => {
   const platform = new GamePlatform();
 
-  // 🎮 Game 1: Flappy Finger
+  // 🥊 Game 1: Boxing
+  platform.registerGame({
+    id: 'boxing',
+    title: 'KNOCKOUT',
+    emoji: '🥊',
+    description: 'Real hand-tracking boxing! Punch, guard & dodge with your fists.',
+    color: '#ff4400',
+    path: 'games/boxing/index.html',
+    comingSoon: false
+  });
+
+  // 🐦 Game 2: Flappy Finger
   platform.registerGame({
     id: 'flappy',
     title: 'FLAPPY FINGER',
@@ -241,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comingSoon: false
   });
 
-  // 🌌 Game 2: Particle Forge
+  // 🌌 Game 3: Particle Forge
   platform.registerGame({
     id: '3d-play',
     title: 'PARTICLE FORGE',
@@ -249,6 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
     description: 'Manipulate 20K particles into 9 shapes with your hands!',
     color: '#8844ff',
     path: 'games/3d-play/index.html',
+    comingSoon: false
+  });
+
+  // 🍉 Game 4: Fruit Ninja
+  platform.registerGame({
+    id: 'fruit-ninja',
+    title: 'FRUIT NINJA',
+    emoji: '🍉',
+    description: 'Slice flying fruits with your finger swipe! Avoid bombs!',
+    color: '#ff4400',
+    path: 'games/fruit-ninja/index.html',
     comingSoon: false
   });
 
