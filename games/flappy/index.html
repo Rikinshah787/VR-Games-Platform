@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>🐦 Flappy Finger — Hand Tracking Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- BACK TO HUB -->
+  <button id="back-to-hub">
+    <span class="back-arrow">←</span> GAMES
+  </button>
+
+  <!-- WEBCAM PREVIEW (small corner) -->
+  <div id="webcam-preview">
+    <video id="preview-cam" autoplay playsinline muted></video>
+  </div>
+
+  <!-- GAME CANVAS -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-display">0</div>
+    <div id="high-score">BEST: 0</div>
+  </div>
+
+  <!-- FINGER INDICATOR -->
+  <div id="finger-indicator">👆</div>
+
+  <!-- PALM CURSOR (hover-to-select) -->
+  <div id="palm-cursor">
+    <div class="cursor-ring"></div>
+    <div class="cursor-fill"></div>
+    <div class="cursor-icon">🖐️</div>
+  </div>
+
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <div id="start-content">
+      <div id="game-title">🐦 FLAPPY FINGER</div>
+      <div id="game-subtitle">Control with your hand!</div>
+      <div id="start-instructions">
+        <p>🖐️ <strong>Show your palm</strong> over the button to start</p>
+        <p>👆 <strong>Point your finger</strong> — Bird follows your finger up/down</p>
+        <p>🤏 <strong>Pinch</strong> — Flap boost!</p>
+        <p>🚫 Avoid the pipes!</p>
+      </div>
+      <button id="start-btn" disabled>⏳ Loading Camera...</button>
+      <div id="camera-status">📷 Initializing hand tracking...</div>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameover-screen" class="hidden">
+    <div id="go-content">
+      <div id="go-title">GAME OVER</div>
+      <div id="go-score"></div>
+      <div id="go-best"></div>
+      <div id="go-message"></div>
+      <button id="restart-btn">🐦 TRY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- NEW MediaPipe Tasks Vision API (faster, synchronous detection) -->
+  <script type="module">
+    import { FilesetResolver, HandLandmarker } from
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs';
+    window.FilesetResolver = FilesetResolver;
+    window.HandLandmarker = HandLandmarker;
+  </script>
+  <script src="../../hand-tracker.js"></script>
+  <script src="flappy.js"></script>
+
+  <script>
+    document.getElementById('back-to-hub').addEventListener('click', () => {
+      window.location.href = '../../index.html';
+    });
+  </script>
+</body>
+
+</html>

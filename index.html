@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>🎮 Hand Gesture Game Platform</title>
+  <link rel="stylesheet" href="platform.css" />
+</head>
+
+<body>
+
+  <!-- BACKGROUND -->
+  <div class="platform-bg">
+    <div class="bg-grid"></div>
+    <div class="bg-particles" id="bg-particles"></div>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <div class="platform-container">
+
+    <!-- HEADER -->
+    <div class="platform-header">
+      <div class="platform-title">🎮 GESTURE ARENA</div>
+      <div class="platform-subtitle">Hand Tracking Game Platform</div>
+      <div id="platform-status">⏳ Initializing...</div>
+    </div>
+
+    <!-- INSTRUCTIONS -->
+    <div id="instructions" class="hidden">
+      <span>👆 Point</span>
+      <span>🤏 Pinch to Select</span>
+      <span>🖱️ or Click</span>
+    </div>
+
+    <!-- GAME GRID -->
+    <div id="game-grid"></div>
+
+  </div>
+
+  <!-- LAUNCH OVERLAY (hidden until game selected) -->
+  <div id="launch-overlay" class="hidden">
+    <div id="launch-emoji">🥊</div>
+    <div id="launch-title">LOADING...</div>
+    <div id="launch-status">Starting game<span class="launch-dots"></span></div>
+  </div>
+
+  <!-- WEBCAM PREVIEW (small corner) -->
+  <div id="webcam-preview">
+    <video id="preview-cam" autoplay playsinline muted></video>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="platform-footer">GESTURE ARENA — Control with your hands</div>
+
+  <!-- NEW MediaPipe Tasks Vision API (faster, synchronous detection) -->
+  <script type="module">
+    import { FilesetResolver, HandLandmarker } from
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs';
+    window.FilesetResolver = FilesetResolver;
+    window.HandLandmarker = HandLandmarker;
+  </script>
+  <script src="hand-tracker.js"></script>
+  <script src="platform.js"></script>
+
+  <!-- Background particles + webcam preview from tracker -->
+  <script>
+    (function () {
+      const container = document.getElementById('bg-particles');
+      for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.className = 'bg-particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDuration = (5 + Math.random() * 10) + 's';
+        p.style.animationDelay = (Math.random() * 10) + 's';
+        p.style.width = (2 + Math.random() * 4) + 'px';
+        p.style.height = p.style.width;
+        container.appendChild(p);
+      }
+    })();
+  </script>
+</body>
+
+</html>

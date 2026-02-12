@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════════════════════
+   🎮 GAME PLATFORM — Hub Stylesheet (platform.css)
+   Game launcher menu with hand-cursor navigation
+   ═══════════════════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;
+  background:#0a0510;font-family:'Segoe UI',system-ui,sans-serif;color:#fff;
+  user-select:none;cursor:default}
+
+/* ─── BACKGROUND ───────────────────────────── */
+.platform-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;
+  background:radial-gradient(ellipse at 30% 20%, rgba(60,20,80,.4) 0%, transparent 50%),
+             radial-gradient(ellipse at 70% 80%, rgba(20,40,80,.4) 0%, transparent 50%),
+             radial-gradient(ellipse at 50% 50%, #0a0510 0%, #050208 100%);
+  overflow:hidden}
+
+.bg-grid{position:absolute;top:0;left:0;width:100%;height:100%;
+  background-image:
+    linear-gradient(rgba(100,60,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100,60,255,.04) 1px, transparent 1px);
+  background-size:60px 60px;
+  animation:gridScroll 20s linear infinite}
+@keyframes gridScroll{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+
+.bg-particles{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}
+.bg-particle{position:absolute;width:4px;height:4px;border-radius:50%;
+  background:rgba(120,80,255,.3);animation:floatUp linear infinite}
+@keyframes floatUp{
+  0%{transform:translateY(100vh) scale(0);opacity:0}
+  10%{opacity:1}
+  90%{opacity:1}
+  100%{transform:translateY(-10vh) scale(1);opacity:0}}
+
+/* ─── LAYOUT ───────────────────────────────── */
+.platform-container{position:relative;z-index:1;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px}
+
+/* ─── HEADER ───────────────────────────────── */
+.platform-header{text-align:center;margin-bottom:40px}
+.platform-title{font-size:52px;font-weight:900;letter-spacing:6px;
+  background:linear-gradient(135deg, #ff6644 0%, #ff44aa 30%, #8844ff 60%, #44aaff 100%);
+  background-size:300% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:titleShine 4s ease infinite;
+  filter:drop-shadow(0 4px 30px rgba(136,68,255,.4))}
+@keyframes titleShine{0%,100%{background-position:0% center}50%{background-position:300% center}}
+
+.platform-subtitle{font-size:16px;color:rgba(255,255,255,.5);letter-spacing:8px;
+  text-transform:uppercase;margin-top:8px}
+
+#platform-status{font-size:15px;margin-top:18px;color:#aa88cc;
+  transition:color .3s}
+#platform-status.ready{color:#44ff88}
+#platform-status.error{color:#ff4444}
+
+/* ─── INSTRUCTIONS ─────────────────────────── */
+#instructions{text-align:center;margin-bottom:30px;
+  font-size:14px;color:rgba(255,255,255,.4);letter-spacing:2px}
+#instructions span{display:inline-block;margin:0 12px;padding:6px 14px;
+  background:rgba(255,255,255,.05);border-radius:8px;
+  border:1px solid rgba(255,255,255,.08)}
+.hidden{display:none!important}
+
+/* ─── GAME GRID ────────────────────────────── */
+#game-grid{display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 280px));
+  gap:30px;justify-content:center;max-width:1200px;width:100%}
+
+/* ─── GAME CARD ────────────────────────────── */
+.game-card{position:relative;border-radius:20px;overflow:visible;
+  cursor:pointer;transition:transform .25s ease, box-shadow .25s ease;
+  aspect-ratio:1/1.1}
+
+.game-card-glow{position:absolute;inset:-2px;border-radius:22px;z-index:0;
+  background:linear-gradient(135deg, var(--card-color), transparent 60%);
+  opacity:0.15;transition:opacity .3s;pointer-events:none}
+
+.game-card-inner{position:relative;z-index:1;width:100%;height:100%;
+  background:linear-gradient(145deg, rgba(25,15,40,.95) 0%, rgba(15,10,25,.98) 100%);
+  border:1px solid rgba(255,255,255,.08);border-radius:20px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px;gap:12px;
+  backdrop-filter:blur(10px)}
+
+.game-emoji{font-size:72px;line-height:1;
+  filter:drop-shadow(0 4px 20px rgba(0,0,0,.5));
+  transition:transform .3s ease}
+
+.game-title{font-size:22px;font-weight:900;letter-spacing:4px;
+  text-transform:uppercase;text-align:center;
+  text-shadow:0 2px 10px rgba(0,0,0,.4)}
+
+.game-desc{font-size:13px;color:rgba(255,255,255,.5);text-align:center;
+  line-height:1.5;max-width:200px}
+
+/* ─── HOVER STATE ──────────────────────────── */
+.game-card.hovered{transform:scale(1.08) translateY(-8px);
+  box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.game-card.hovered .game-card-glow{opacity:0.5}
+.game-card.hovered .game-emoji{transform:scale(1.15) rotate(-5deg)}
+.game-card.hovered .game-card-inner{
+  border-color:rgba(255,255,255,.2);
+  background:linear-gradient(145deg, rgba(35,20,55,.95) 0%, rgba(20,12,35,.98) 100%)}
+
+/* ─── SELECTED STATE ───────────────────────── */
+.game-card.selected{animation:cardSelect .4s ease forwards}
+@keyframes cardSelect{
+  0%{transform:scale(1.08) translateY(-8px)}
+  30%{transform:scale(0.95) translateY(0)}
+  60%{transform:scale(1.15) translateY(-15px)}
+  100%{transform:scale(20);opacity:0}}
+
+/* ─── COMING SOON ──────────────────────────── */
+.game-card.coming-soon{cursor:default;opacity:0.5}
+.game-card.coming-soon .game-card-inner{filter:grayscale(.5)}
+.game-card.coming-soon:hover{transform:none;box-shadow:none}
+.coming-soon-badge{position:absolute;bottom:20px;
+  font-size:12px;font-weight:700;letter-spacing:3px;
+  color:#ff8844;background:rgba(255,100,30,.1);
+  padding:6px 16px;border-radius:20px;
+  border:1px solid rgba(255,100,30,.3)}
+
+/* ─── HOVER PROGRESS RING ──────────────────── */
+.hover-progress-ring{position:absolute;top:50%;left:50%;
+  width:100px;height:100px;transform:translate(-50%,-50%);
+  pointer-events:none;z-index:10}
+.hover-progress-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.05);stroke-width:4}
+.ring-fill{fill:none;stroke:rgba(255,200,50,.8);stroke-width:4;
+  stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:283;
+  opacity:0;transition:stroke-dashoffset .1s linear, opacity .2s;
+  filter:drop-shadow(0 0 8px rgba(255,200,50,.5))}
+
+/* ─── LAUNCH OVERLAY ───────────────────────── */
+#launch-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:500;
+  background:rgba(0,0,0,.9);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  animation:launchFade .3s ease}
+@keyframes launchFade{0%{opacity:0}100%{opacity:1}}
+
+#launch-emoji{font-size:120px;animation:launchBounce .6s ease infinite alternate}
+@keyframes launchBounce{0%{transform:scale(1)}100%{transform:scale(1.1)}}
+
+#launch-title{font-size:42px;font-weight:900;letter-spacing:6px;margin-top:20px;
+  color:#fff;text-shadow:0 0 40px rgba(255,150,50,.5)}
+
+#launch-status{font-size:16px;color:rgba(255,255,255,.5);margin-top:15px;
+  letter-spacing:3px}
+
+.launch-dots{display:inline-block;animation:dots 1.4s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.launch-dots::after{content:'';animation:dotsText 1.4s steps(4,end) infinite}
+@keyframes dotsText{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* ─── PINCH RIPPLE ─────────────────────────── */
+@keyframes pinchRipple{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:1;border-width:3px}
+  100%{transform:translate(-50%,-50%) scale(3);opacity:0;border-width:1px}}
+
+/* ─── WEBCAM PREVIEW ───────────────────────── */
+#webcam-preview{position:fixed;bottom:20px;right:20px;
+  width:200px;height:150px;border-radius:12px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.1);z-index:100;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0.7;
+  transition:opacity .3s}
+#webcam-preview:hover{opacity:1}
+#webcam-preview video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+
+/* ─── FOOTER ───────────────────────────────── */
+.platform-footer{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  font-size:12px;color:rgba(255,255,255,.2);letter-spacing:3px;z-index:10}
+
+/* ─── BODY LAUNCHING STATE ─────────────────── */
+body.launching .platform-container{
+  animation:containerZoom 1s ease forwards}
+@keyframes containerZoom{
+  0%{transform:scale(1);opacity:1}
+  100%{transform:scale(0.8);opacity:0;filter:blur(10px)}}
+
+/* ─── RESPONSIVE ───────────────────────────── */
+@media(max-width:768px){
+  .platform-title{font-size:32px;letter-spacing:3px}
+  .platform-subtitle{font-size:12px;letter-spacing:4px}
+  #game-grid{grid-template-columns:repeat(2, 1fr);gap:15px}
+  .game-emoji{font-size:48px}
+  .game-title{font-size:16px}
+  .game-desc{font-size:11px}
+  .platform-container{padding:15px}
+  .platform-header{margin-bottom:20px}
+  #webcam-preview{width:120px;height:90px}
+}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand-Text FX | Real-time Interactive Typography</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Three.js Library -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/examples/jsm/postprocessing/EffectComposer": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js",
+            "three/examples/jsm/postprocessing/RenderPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js",
+            "three/examples/jsm/postprocessing/UnrealBloomPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js",
+            "three/examples/jsm/postprocessing/ShaderPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js",
+            "three/examples/jsm/shaders/CopyShader": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/CopyShader.js",
+            "three/examples/jsm/shaders/LuminosityHighPassShader": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/LuminosityHighPassShader.js"
+        }
+    }
+    </script>
+
+    <!-- NEW MediaPipe Tasks Vision API (faster, synchronous detection) -->
+    <script type="module">
+        import { FilesetResolver, HandLandmarker } from
+            'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs';
+        window.FilesetResolver = FilesetResolver;
+        window.HandLandmarker = HandLandmarker;
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/23.1.1/tween.umd.js"></script>
+</head>
+
+<body>
+    <div id="ui-container">
+        <h1>Hand-Text FX</h1>
+        <div id="status-overlay" style="margin-top: 10px; color: var(--primary);">System Initializing...</div>
+        <div id="gesture-indicator" style="display: none;">Waiting for detection...</div>
+        <div id="instructions">
+            <span>🤏 Pinch: Grab & Drag</span>
+            <span>🖐️ Release: Kinetic Throw</span>
+            <span>⌨️ Keys 1-5: HUD Shape</span>
+        </div>
+    </div>
+
+    <!-- Need to update main.js to be type="module" -->
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas-depth" style="display: none;"></canvas>
+    <canvas id="canvas-text"></canvas>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>

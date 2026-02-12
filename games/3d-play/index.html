@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>🌌 Particle Forge — 3D Hand Interaction</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/examples/jsm/postprocessing/EffectComposer": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js",
+      "three/examples/jsm/postprocessing/RenderPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js",
+      "three/examples/jsm/postprocessing/UnrealBloomPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js",
+      "three/examples/jsm/postprocessing/ShaderPass": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js",
+      "three/examples/jsm/shaders/CopyShader": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/CopyShader.js",
+      "three/examples/jsm/shaders/LuminosityHighPassShader": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/LuminosityHighPassShader.js"
+    }
+  }
+  </script>
+  <!-- NEW MediaPipe Tasks Vision API (faster, synchronous detection) -->
+  <script type="module">
+    import { FilesetResolver, HandLandmarker } from
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs';
+    window.FilesetResolver = FilesetResolver;
+    window.HandLandmarker = HandLandmarker;
+  </script>
+</head>
+
+<body>
+
+  <!-- BACK TO HUB -->
+  <button id="back-to-hub">
+    <span class="back-arrow">←</span> GAMES
+  </button>
+
+  <!-- TOP HUD -->
+  <div id="ui-top">
+    <div id="title-bar">
+      <div id="game-title">🌌 PARTICLE FORGE</div>
+      <div id="status-text">Initializing...</div>
+    </div>
+  </div>
+
+  <!-- SHAPE GALLERY -->
+  <div id="shape-gallery">
+    <div class="shape-btn active" data-shape="sphere" data-color="#00f2fe">
+      <span class="shape-icon">🔵</span><span class="shape-name">Sphere</span>
+    </div>
+    <div class="shape-btn" data-shape="cube" data-color="#ff3e00">
+      <span class="shape-icon">🟧</span><span class="shape-name">Cube</span>
+    </div>
+    <div class="shape-btn" data-shape="torus" data-color="#00ff88">
+      <span class="shape-icon">🟢</span><span class="shape-name">Torus</span>
+    </div>
+    <div class="shape-btn" data-shape="dna" data-color="#ff44ff">
+      <span class="shape-icon">🧬</span><span class="shape-name">DNA</span>
+    </div>
+    <div class="shape-btn" data-shape="galaxy" data-color="#8844ff">
+      <span class="shape-icon">🌀</span><span class="shape-name">Galaxy</span>
+    </div>
+    <div class="shape-btn" data-shape="heart" data-color="#ff2266">
+      <span class="shape-icon">❤️</span><span class="shape-name">Heart</span>
+    </div>
+    <div class="shape-btn" data-shape="diamond" data-color="#44ffff">
+      <span class="shape-icon">💎</span><span class="shape-name">Diamond</span>
+    </div>
+    <div class="shape-btn" data-shape="wave" data-color="#ffaa00">
+      <span class="shape-icon">🌊</span><span class="shape-name">Wave</span>
+    </div>
+    <div class="shape-btn" data-shape="firework" data-color="#ffff00">
+      <span class="shape-icon">🎆</span><span class="shape-name">Burst</span>
+    </div>
+  </div>
+
+  <!-- DATA READOUT -->
+  <div id="data-panel">
+    <div class="data-row"><span class="data-label">SHAPE</span><span id="data-shape" class="data-value">SPHERE</span>
+    </div>
+    <div class="data-row"><span class="data-label">PARTICLES</span><span id="data-particles"
+        class="data-value">20,000</span></div>
+    <div class="data-row"><span class="data-label">GESTURE</span><span id="data-gesture" class="data-value">—</span>
+    </div>
+    <div class="data-row"><span class="data-label">VELOCITY</span><span id="data-velocity"
+        class="data-value">0.00</span></div>
+    <div class="data-row"><span class="data-label">FPS</span><span id="data-fps" class="data-value">60</span></div>
+  </div>
+
+  <!-- GESTURE TOAST -->
+  <div id="gesture-toast" class="hidden"></div>
+
+  <!-- INSTRUCTIONS -->
+  <div id="instructions">
+    <span>🤏 Pinch: Grab & Drag</span>
+    <span>🖐️ Open: Kinetic Throw</span>
+    <span>✌️ Peace: Next Shape</span>
+    <span>👊 Fist: Explode!</span>
+  </div>
+
+  <!-- WEBCAM -->
+  <div id="webcam-container">
+    <video id="webcam" autoplay playsinline muted></video>
+    <div id="webcam-label">CAMERA</div>
+  </div>
+
+  <script type="module" src="main.js"></script>
+  <script>
+    document.getElementById('back-to-hub').addEventListener('click', () => {
+      window.location.href = '../../index.html';
+    });
+  </script>
+</body>
+
+</html>
