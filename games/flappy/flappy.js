@@ -21,7 +21,8 @@
   // ═══ GAME CONSTANTS ═══
   const PIPE_WIDTH = 70;
   const PIPE_GAP = 250;          // gap between top and bottom pipe (wider = easier)
-  const PIPE_SPEED = 2.2;
+  const PIPE_SPEED_BASE = 2.2;
+  const PIPE_SPEED_BOOST = 4.5;
   const PIPE_SPACING_PX = 280;   // minimum pixel distance between pipes
   const BIRD_SIZE = 36;
   const BIRD_X = 0.2;            // bird's fixed X position (20% from left)
@@ -41,6 +42,8 @@
   let lastPipeTime = 0;
   let frameCount = 0;
   let groundOffset = 0;
+  let currentPipeSpeed = PIPE_SPEED_BASE;
+  let speedLines = [];
 
   // Finger tracking
   let fingerY = 0.5;             // normalized 0..1
@@ -55,6 +58,17 @@
   let palmHoverTarget = null;
   let palmHoverStartTime = 0;
   let palmHoverProgress = 0;
+
+  // Hand skeleton
+  let skeletonCanvas = null, skeletonCtx = null;
+  const HAND_CONNECTIONS = [
+    [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
+    [0, 5], [5, 6], [6, 7], [7, 8],       // Index
+    [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
+    [0, 13], [13, 14], [14, 15], [15, 16],// Ring
+    [0, 17], [17, 18], [18, 19], [19, 20],// Pinky
+    [5, 9], [9, 13], [13, 17]             // Palm
+  ];
 
   // ═══ DOM ═══
   const scoreDisplay = document.getElementById('score-display');
@@ -102,6 +116,17 @@
       const previewCam = document.getElementById('preview-cam');
       const stream = handTracker.getStream();
       if (previewCam && stream) previewCam.srcObject = stream;
+
+      // Init skeleton canvas
+      skeletonCanvas = document.getElementById('webcam-skeleton-preview');
+      if (skeletonCanvas && previewCam) {
+        // Wait for video to have dimensions
+        previewCam.addEventListener('loadeddata', () => {
+          skeletonCanvas.width = previewCam.videoWidth;
+          skeletonCanvas.height = previewCam.videoHeight;
+        });
+        skeletonCtx = skeletonCanvas.getContext('2d');
+      }
     },
     onError: (err) => {
       cameraStatus.textContent = '❌ Camera error: ' + err.message;
@@ -112,8 +137,8 @@
       targetFingerY = y;
       fingerVisible = true;
 
-      // Update finger indicator
-      fingerIndicator.style.opacity = '1';
+      // Update finger indicator (HIDDEN as per user request)
+      fingerIndicator.style.opacity = '0';
       fingerIndicator.style.left = (x * window.innerWidth) + 'px';
       fingerIndicator.style.top = (y * window.innerHeight) + 'px';
     },
@@ -131,6 +156,13 @@
     },
     onRelease: () => {
       isPinching = false;
+    },
+    onResults: (results) => {
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        drawHandSkeleton(results.multiHandLandmarks[0]);
+      } else if (skeletonCtx) {
+        skeletonCtx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
+      }
     }
   });
 
@@ -138,6 +170,34 @@
   handTracker.init().then(() => {
     if (handTracker.cursorEl) handTracker.cursorEl.style.display = 'none';
   });
+
+  function drawHandSkeleton(landmarks) {
+    if (!skeletonCtx || !skeletonCanvas) return;
+    const w = skeletonCanvas.width;
+    const h = skeletonCanvas.height;
+    skeletonCtx.clearRect(0, 0, w, h);
+
+    skeletonCtx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+    skeletonCtx.lineWidth = 2;
+
+    // Connections
+    for (const [a, b] of HAND_CONNECTIONS) {
+      const ax = landmarks[a].x * w, ay = landmarks[a].y * h;
+      const bx = landmarks[b].x * w, by = landmarks[b].y * h;
+      skeletonCtx.beginPath();
+      skeletonCtx.moveTo(ax, ay);
+      skeletonCtx.lineTo(bx, by);
+      skeletonCtx.stroke();
+    }
+
+    // Dots
+    skeletonCtx.fillStyle = '#00ffff';
+    for (const lm of landmarks) {
+      skeletonCtx.beginPath();
+      skeletonCtx.arc(lm.x * w, lm.y * h, 3, 0, Math.PI * 2);
+      skeletonCtx.fill();
+    }
+  }
 
   // ═══ PALM HOVER-TO-SELECT ═══
   function updatePalmUI() {
@@ -148,6 +208,7 @@
       palmHoverProgress = 0;
       startBtn.classList.remove('palm-hover');
       restartBtn.classList.remove('palm-hover');
+      document.getElementById('back-to-hub').classList.remove('palm-hover');
       cursorFillEl.style.background = `conic-gradient(from 0deg, rgba(255,200,0,0.6) 0%, transparent 0%)`;
       palmVisible = false;
       return;
@@ -173,6 +234,16 @@
       }
     }
 
+    // Check back button (always available in menu or gameover)
+    if (state !== 'playing') {
+      const backBtn = document.getElementById('back-to-hub');
+      const rect = backBtn.getBoundingClientRect();
+      if (palmCursorX >= rect.left - 20 && palmCursorX <= rect.right + 20 &&
+        palmCursorY >= rect.top - 20 && palmCursorY <= rect.bottom + 20) {
+        currentTarget = 'back';
+      }
+    }
+
     if (currentTarget !== palmHoverTarget) {
       palmHoverTarget = currentTarget;
       palmHoverStartTime = currentTarget ? Date.now() : 0;
@@ -181,6 +252,7 @@
 
     startBtn.classList.toggle('palm-hover', currentTarget === 'start');
     restartBtn.classList.toggle('palm-hover', currentTarget === 'restart');
+    document.getElementById('back-to-hub').classList.toggle('palm-hover', currentTarget === 'back');
     palmCursorEl.classList.toggle('hover', currentTarget !== null);
 
     if (currentTarget) {
@@ -189,6 +261,7 @@
 
       if (palmHoverProgress >= 1) {
         if (currentTarget === 'start' || currentTarget === 'restart') startGame();
+        if (currentTarget === 'back') window.location.href = '../../index.html';
         palmHoverTarget = null;
         palmHoverProgress = 0;
       }
@@ -328,7 +401,15 @@
     }
   }
 
-  // ═══════════════════════════════════════════════
+  // ═══ SPEED LINES ═══
+  function spawnSpeedLine() {
+    speedLines.push({
+      x: bird.x - 20,
+      y: bird.y + (Math.random() - 0.5) * 60,
+      w: 40 + Math.random() * 60,
+      opacity: 0.4 + Math.random() * 0.4
+    });
+  }
   //  DRAWING FUNCTIONS
   // ═══════════════════════════════════════════════
 
@@ -372,7 +453,7 @@
     ctx.fillRect(0, y + 8, canvas.width, GROUND_HEIGHT);
 
     // Scrolling stripe pattern
-    if (state === 'playing') groundOffset = (groundOffset + PIPE_SPEED) % 24;
+    if (state === 'playing') groundOffset = (groundOffset + currentPipeSpeed) % 24;
     ctx.strokeStyle = 'rgba(0,0,0,0.08)';
     ctx.lineWidth = 2;
     for (let x = -groundOffset; x < canvas.width; x += 24) {
@@ -522,6 +603,37 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawSpeedLines() {
+    if (currentPipeSpeed < PIPE_SPEED_BASE + 0.5) {
+      speedLines = [];
+      return;
+    }
+
+    // Spawn new lines
+    if (Math.random() < 0.3) spawnSpeedLine();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+
+    for (let i = speedLines.length - 1; i >= 0; i--) {
+      const s = speedLines[i];
+      s.x -= currentPipeSpeed * 1.5;
+      s.opacity -= 0.05;
+
+      if (s.opacity <= 0 || s.x + s.w < 0) {
+        speedLines.splice(i, 1);
+        continue;
+      }
+
+      ctx.globalAlpha = s.opacity;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + s.w, s.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // ═══════════════════════════════════════════════
   //  GAME UPDATE
   // ═══════════════════════════════════════════════
@@ -531,6 +643,10 @@
 
     const now = Date.now();
     frameCount++;
+
+    // ── Speed boost logic ──
+    const targetSpeed = isPinching ? PIPE_SPEED_BOOST : PIPE_SPEED_BASE;
+    currentPipeSpeed += (targetSpeed - currentPipeSpeed) * 0.1;
 
     // ── Smooth finger tracking ──
     fingerY += (targetFingerY - fingerY) * FINGER_SMOOTHING;
@@ -577,7 +693,7 @@
     // ── Move & check pipes ──
     for (let i = pipes.length - 1; i >= 0; i--) {
       const p = pipes[i];
-      p.x -= PIPE_SPEED;
+      p.x -= currentPipeSpeed;
 
       // Score when passing pipe
       if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
@@ -627,20 +743,18 @@
     // Palm UI control (menus)
     updatePalmUI();
 
+    // Environment & Pipes
     drawSky();
     drawClouds();
-
-    // Pipes
     pipes.forEach(drawPipe);
-
-    // Bird
-    if (state !== 'menu') drawBird();
-
-    // Ground (on top of pipes)
     drawGround();
 
-    // Particles
-    drawParticles();
+    // Visual Effects & Bird
+    if (state !== 'menu') {
+      drawSpeedLines();
+      drawBird();
+      drawParticles();
+    }
 
     // Finger guide line (while playing)
     if (state === 'playing' && fingerVisible) {

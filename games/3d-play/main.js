@@ -106,12 +106,31 @@ let lastExplosion = 0;
 let rotationVelocity = new THREE.Vector2(0, 0);
 let grabStartHandPos = new THREE.Vector3(0, 0, 0);
 
-// Hand Filters
+// Hand Filters (tuned: higher beta = more responsive to fast movement)
 const handFilters = {
-  x: new OneEuroFilter(60, 1.2, 0.005),
-  y: new OneEuroFilter(60, 1.2, 0.005),
-  z: new OneEuroFilter(60, 1.2, 0.005)
+  x: new OneEuroFilter(60, 1.0, 0.007),
+  y: new OneEuroFilter(60, 1.0, 0.007),
+  z: new OneEuroFilter(60, 1.0, 0.007)
 };
+
+// Max hand velocity magnitude (prevents sensitivity drift)
+const MAX_HAND_VELOCITY = 2.0;
+
+// Hand skeleton drawing
+let skeletonCanvas = null;
+let skeletonCtx = null;
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
+  [0, 5], [5, 6], [6, 7], [7, 8],       // Index
+  [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
+  [0, 13], [13, 14], [14, 15], [15, 16],// Ring
+  [0, 17], [17, 18], [18, 19], [19, 20],// Pinky
+  [5, 9], [9, 13], [13, 17]             // Palm
+];
+
+// Pinch-Stretch State
+let grabbedIndices = [];
+const GRAB_RADIUS = 2.5;
 
 // Audio
 let audioCtx = null;
@@ -123,6 +142,11 @@ let fps = 60;
 
 // DOM
 const dataFps = document.getElementById('data-fps');
+const statusText = document.getElementById('status-text');
+const dataShape = document.getElementById('data-shape');
+const dataGesture = document.getElementById('data-gesture');
+const dataVelocity = document.getElementById('data-velocity');
+const gestureToast = document.getElementById('gesture-toast');
 
 // MediaPipe Latest API Globals
 let handLandmarker;
@@ -191,6 +215,9 @@ function initScene() {
 
   // Shape gallery clicks
   initShapeGallery();
+
+  // Skeleton canvas for webcam overlay
+  initSkeletonCanvas();
 
   window.addEventListener('resize', onResize);
 }
@@ -593,6 +620,85 @@ function showToast(text) {
 }
 
 // ═══════════════════════════════════════════════
+//  SKELETON CANVAS (overlay on webcam)
+// ═══════════════════════════════════════════════
+function initSkeletonCanvas() {
+  const container = document.getElementById('webcam-container');
+  if (!container) return;
+  skeletonCanvas = document.getElementById('webcam-skeleton');
+  if (!skeletonCanvas) {
+    skeletonCanvas = document.createElement('canvas');
+    skeletonCanvas.id = 'webcam-skeleton';
+    container.appendChild(skeletonCanvas);
+  }
+  // Match webcam size once it loads
+  const webcam = document.getElementById('webcam');
+  const setSize = () => {
+    skeletonCanvas.width = webcam.videoWidth || 640;
+    skeletonCanvas.height = webcam.videoHeight || 480;
+  };
+  webcam.addEventListener('loadeddata', setSize);
+  setSize();
+  skeletonCtx = skeletonCanvas.getContext('2d');
+}
+
+function drawHandSkeleton(landmarks) {
+  if (!skeletonCtx || !skeletonCanvas) return;
+  const w = skeletonCanvas.width;
+  const h = skeletonCanvas.height;
+  skeletonCtx.clearRect(0, 0, w, h);
+
+  // Determine color based on gesture
+  let lineColor = 'rgba(0, 242, 254, 0.8)';  // cyan default
+  let dotColor = 'rgba(0, 242, 254, 1)';
+  if (currentGesture === 'pinch') {
+    lineColor = 'rgba(255, 62, 0, 0.8)'; dotColor = 'rgba(255, 62, 0, 1)';
+  } else if (currentGesture === 'peace') {
+    lineColor = 'rgba(68, 255, 136, 0.8)'; dotColor = 'rgba(68, 255, 136, 1)';
+  } else if (currentGesture === 'fist') {
+    lineColor = 'rgba(255, 255, 0, 0.8)'; dotColor = 'rgba(255, 255, 0, 1)';
+  } else if (currentGesture === 'point') {
+    lineColor = 'rgba(255, 170, 0, 0.8)'; dotColor = 'rgba(255, 170, 0, 1)';
+  }
+
+  // Draw connections
+  skeletonCtx.strokeStyle = lineColor;
+  skeletonCtx.lineWidth = 2;
+  for (const [a, b] of HAND_CONNECTIONS) {
+    const ax = landmarks[a].x * w, ay = landmarks[a].y * h;
+    const bx = landmarks[b].x * w, by = landmarks[b].y * h;
+    skeletonCtx.beginPath();
+    skeletonCtx.moveTo(ax, ay);
+    skeletonCtx.lineTo(bx, by);
+    skeletonCtx.stroke();
+  }
+
+  // Draw landmarks
+  skeletonCtx.fillStyle = dotColor;
+  for (let i = 0; i < landmarks.length; i++) {
+    const x = landmarks[i].x * w;
+    const y = landmarks[i].y * h;
+    const radius = (i === 0 || i === 5 || i === 9 || i === 13 || i === 17) ? 4 : 3;
+    skeletonCtx.beginPath();
+    skeletonCtx.arc(x, y, radius, 0, Math.PI * 2);
+    skeletonCtx.fill();
+  }
+
+  // Highlight fingertips with glow
+  const tips = [4, 8, 12, 16, 20];
+  skeletonCtx.shadowColor = dotColor;
+  skeletonCtx.shadowBlur = 8;
+  for (const tip of tips) {
+    const x = landmarks[tip].x * w;
+    const y = landmarks[tip].y * h;
+    skeletonCtx.beginPath();
+    skeletonCtx.arc(x, y, 5, 0, Math.PI * 2);
+    skeletonCtx.fill();
+  }
+  skeletonCtx.shadowBlur = 0;
+}
+
+// ═══════════════════════════════════════════════
 //  MEDIAPIPE INIT
 // ═══════════════════════════════════════════════
 async function initMediaPipe() {
@@ -614,9 +720,9 @@ async function initMediaPipe() {
       },
       runningMode: "VIDEO",
       numHands: 1,
-      minHandDetectionConfidence: 0.5,
-      minHandPresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
+      minHandDetectionConfidence: 0.4,
+      minHandPresenceConfidence: 0.4,
+      minTrackingConfidence: 0.3
     });
 
     const videoEl = document.getElementById('webcam');
@@ -649,6 +755,9 @@ function onHandResults(results) {
     const lm = results.multiHandLandmarks[0];
     isHandPresent = true;
     const t = performance.now() / 1000;
+
+    // Draw skeleton overlay on webcam
+    drawHandSkeleton(lm);
 
     // Wrist as hand center
     const wrist = lm[0];
@@ -686,6 +795,10 @@ function onHandResults(results) {
     isGrabbing = false;
     hudGroup.visible = false;
     dataGesture.textContent = '—';
+    // Clear skeleton when hand lost
+    if (skeletonCtx && skeletonCanvas) {
+      skeletonCtx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
+    }
     // Reset filters when hand is lost
     handFilters.x.reset();
     handFilters.y.reset();
@@ -701,16 +814,21 @@ function analyzeGesture(lm) {
   const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y, thumb.z - index.z);
   if (pinchDist < 0.08) return 'pinch';
 
+  // Finger extension states
+  const indexUp = index.y < indexMcp.y;
+  const middleUp = middle.y < middleMcp.y;
+  const ringDown = ring.y > ringMcp.y;
+  const pinkyDown = pinky.y > pinkyMcp.y;
+
   // Fist: all fingertips below MCPs
   const fist = (index.y > indexMcp.y) && (middle.y > middleMcp.y) &&
     (ring.y > ringMcp.y) && (pinky.y > pinkyMcp.y);
   if (fist) return 'fist';
 
+  // Point: index extended, rest curled (gun-point gesture)
+  if (indexUp && !middleUp && ringDown && pinkyDown) return 'point';
+
   // Peace: index+middle extended, ring+pinky curled
-  const indexUp = index.y < indexMcp.y;
-  const middleUp = middle.y < middleMcp.y;
-  const ringDown = ring.y > ringMcp.y;
-  const pinkyDown = pinky.y > pinkyMcp.y;
   if (indexUp && middleUp && ringDown && pinkyDown) return 'peace';
 
   return 'open';
@@ -726,7 +844,17 @@ function handleGestureChange(gesture) {
     case 'pinch':
       isGrabbing = true;
       grabStartHandPos.copy(targetHandPos);
-      dataGesture.textContent = '🤏 GRAB';
+
+      // Find particles to "stretch"
+      grabbedIndices = [];
+      const posArr = particleSystem.geometry.attributes.position.array;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const i3 = i * 3;
+        const dist = Math.hypot(posArr[i3] - targetHandPos.x, posArr[i3 + 1] - targetHandPos.y, posArr[i3 + 2] - targetHandPos.z);
+        if (dist < GRAB_RADIUS) grabbedIndices.push(i);
+      }
+
+      dataGesture.textContent = '🤏 STRETCH';
       dataGesture.style.color = '#ff3e00';
       colorMode.setHex(0xff3e00);
       playGrabSound();
@@ -749,6 +877,12 @@ function handleGestureChange(gesture) {
       explodeParticles();
       break;
 
+    case 'point':
+      isGrabbing = false;
+      dataGesture.textContent = '☝️ POINT';
+      dataGesture.style.color = '#ffaa00';
+      break;
+
     default: // open
       if (isGrabbing) {
         // Release → kinetic throw
@@ -759,6 +893,7 @@ function handleGestureChange(gesture) {
         dataGesture.style.color = '#00f2fe';
       }
       isGrabbing = false;
+      grabbedIndices = [];
       // Restore shape color
       const btn = document.querySelector('.shape-btn.active');
       if (btn) colorMode.setHex(parseInt(btn.dataset.color.replace('#', ''), 16));
@@ -809,32 +944,26 @@ function animate() {
 
   // Hand smoothing (Hand position now follows targetHandPos which is already One-Euro filtered)
   handVelocity.subVectors(targetHandPos, lastHandPos);
+
+  // Clamp velocity to prevent sensitivity drift over time
+  const velMag = handVelocity.length();
+  if (velMag > MAX_HAND_VELOCITY) {
+    handVelocity.multiplyScalar(MAX_HAND_VELOCITY / velMag);
+  }
+
   lastHandPos.copy(targetHandPos);
   handPosition.copy(targetHandPos); // No extra lerp needed as OneEuro is smooth enough
 
   const speed = handVelocity.length();
   dataVelocity.textContent = speed.toFixed(2);
 
-  // HUD follow hand
+  // HUD follow hand (HIDDEN as per user request to keep visuals in camera frame only)
   if (isHandPresent) {
-    hudGroup.visible = true;
+    hudGroup.visible = false; // Forced false
     hudGroup.position.copy(handPosition);
-    hudGroup.rotation.y += 0.04;
-    palmRing.rotation.x += 0.02;
-    palmRing.rotation.z += 0.01;
-
-    // Orbit dots
-    hudGroup.children.forEach(child => {
-      if (child.userData.orbitRadius) {
-        child.userData.angle += child.userData.orbitSpeed;
-        child.position.x = Math.cos(child.userData.angle) * child.userData.orbitRadius;
-        child.position.y = Math.sin(child.userData.angle) * child.userData.orbitRadius;
-      }
-    });
-
-    // Pulse ring scale based on gesture
-    const targetScale = isGrabbing ? 0.6 : 1.0;
-    palmRing.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+    // ... rest of HUD logic can stay but it's invisible
+  } else {
+    hudGroup.visible = false;
   }
 
   // Energy beam
@@ -855,35 +984,47 @@ function animate() {
     const dz = handPosition.z - posArr[i3 + 2];
     const distSq = dx * dx + dy * dy + dz * dz;
 
-    if (isHandPresent && isGrabbing) {
-      // Attraction toward hand
-      const force = 0.18 / (distSq + 0.1);
-      velocities[i3] += dx * force;
-      velocities[i3 + 1] += dy * force;
-      velocities[i3 + 2] += dz * force;
-    } else if (isHandPresent && !isGrabbing && distSq < 6) {
-      // Repulsion when open hand is near
-      const repulse = -0.02 / (distSq + 0.5);
-      velocities[i3] += dx * repulse;
-      velocities[i3 + 1] += dy * repulse;
-      velocities[i3 + 2] += dz * repulse;
+    // Is this particle currently grabbed?
+    if (isGrabbing && grabbedIndices.includes(i)) {
+      // Sticky: follow hand delta exactly (Stretch effect)
+      posArr[i3] += handVelocity.x;
+      posArr[i3 + 1] += handVelocity.y;
+      posArr[i3 + 2] += handVelocity.z;
+      // Damping velocity to prevent wild release
+      velocities[i3] *= 0.1;
+      velocities[i3 + 1] *= 0.1;
+      velocities[i3 + 2] *= 0.1;
+    } else {
+      if (isHandPresent && isGrabbing) {
+        // Subtle global pull while grabbing other parts
+        const force = 0.05 / (distSq + 2.0);
+        velocities[i3] += dx * force;
+        velocities[i3 + 1] += dy * force;
+        velocities[i3 + 2] += dz * force;
+      } else if (isHandPresent && !isGrabbing && distSq < 6) {
+        // Repulsion when open hand is near
+        const repulse = -0.02 / (distSq + 0.5);
+        velocities[i3] += dx * repulse;
+        velocities[i3 + 1] += dy * repulse;
+        velocities[i3 + 2] += dz * repulse;
 
-      // Kinetic throw from hand velocity
-      velocities[i3] += handVelocity.x * 0.08;
-      velocities[i3 + 1] += handVelocity.y * 0.08;
-      velocities[i3 + 2] += handVelocity.z * 0.08;
+        // Kinetic throw from hand velocity
+        velocities[i3] += handVelocity.x * 0.08;
+        velocities[i3 + 1] += handVelocity.y * 0.08;
+        velocities[i3 + 2] += handVelocity.z * 0.08;
+      }
+
+      // Morph toward target shape
+      const morphSpeed = isGrabbing ? 0.015 : 0.04;
+      posArr[i3] += velocities[i3] + (targetArr[i3] - posArr[i3]) * morphSpeed;
+      posArr[i3 + 1] += velocities[i3 + 1] + (targetArr[i3 + 1] - posArr[i3 + 1]) * morphSpeed;
+      posArr[i3 + 2] += velocities[i3 + 2] + (targetArr[i3 + 2] - posArr[i3 + 2]) * morphSpeed;
+
+      // Damping
+      velocities[i3] *= 0.93;
+      velocities[i3 + 1] *= 0.93;
+      velocities[i3 + 2] *= 0.93;
     }
-
-    // Morph toward target shape
-    const morphSpeed = isGrabbing ? 0.02 : 0.04;
-    posArr[i3] += velocities[i3] + (targetArr[i3] - posArr[i3]) * morphSpeed;
-    posArr[i3 + 1] += velocities[i3 + 1] + (targetArr[i3 + 1] - posArr[i3 + 1]) * morphSpeed;
-    posArr[i3 + 2] += velocities[i3 + 2] + (targetArr[i3 + 2] - posArr[i3 + 2]) * morphSpeed;
-
-    // Damping
-    velocities[i3] *= 0.93;
-    velocities[i3 + 1] *= 0.93;
-    velocities[i3 + 2] *= 0.93;
   }
 
   posAttr.needsUpdate = true;

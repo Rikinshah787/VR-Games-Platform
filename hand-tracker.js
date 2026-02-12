@@ -127,6 +127,7 @@ class HandCursor {
       transform: translate(-30%, -10%);
       transition: opacity 0.2s;
       opacity: 0; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+      display: none;
     `;
     parent.appendChild(this.cursorEl);
 
@@ -175,7 +176,10 @@ class HandCursor {
       this.video.onloadeddata = () => {
         this.ready = true;
         if (this.onReady) this.onReady();
-        this._loop();
+        // Delay tracking start to allow camera to stabilize (warm-up)
+        setTimeout(() => {
+          this._loop();
+        }, 1500);
       };
 
     } catch (err) {
