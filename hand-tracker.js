@@ -127,7 +127,6 @@ class HandCursor {
       transform: translate(-30%, -10%);
       transition: opacity 0.2s;
       opacity: 0; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-      display: none;
     `;
     parent.appendChild(this.cursorEl);
 

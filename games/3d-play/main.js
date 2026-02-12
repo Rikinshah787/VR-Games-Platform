@@ -125,12 +125,8 @@ const HAND_CONNECTIONS = [
   [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
   [0, 13], [13, 14], [14, 15], [15, 16],// Ring
   [0, 17], [17, 18], [18, 19], [19, 20],// Pinky
-  [5, 9], [9, 13], [13, 17]             // Palm
+  [5, 9], [9, 13], [13, 17]           // Palm
 ];
-
-// Pinch-Stretch State
-let grabbedIndices = [];
-const GRAB_RADIUS = 2.5;
 
 // Audio
 let audioCtx = null;
@@ -844,17 +840,7 @@ function handleGestureChange(gesture) {
     case 'pinch':
       isGrabbing = true;
       grabStartHandPos.copy(targetHandPos);
-
-      // Find particles to "stretch"
-      grabbedIndices = [];
-      const posArr = particleSystem.geometry.attributes.position.array;
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const i3 = i * 3;
-        const dist = Math.hypot(posArr[i3] - targetHandPos.x, posArr[i3 + 1] - targetHandPos.y, posArr[i3 + 2] - targetHandPos.z);
-        if (dist < GRAB_RADIUS) grabbedIndices.push(i);
-      }
-
-      dataGesture.textContent = '🤏 STRETCH';
+      dataGesture.textContent = '🤏 GRAB';
       dataGesture.style.color = '#ff3e00';
       colorMode.setHex(0xff3e00);
       playGrabSound();
@@ -893,7 +879,6 @@ function handleGestureChange(gesture) {
         dataGesture.style.color = '#00f2fe';
       }
       isGrabbing = false;
-      grabbedIndices = [];
       // Restore shape color
       const btn = document.querySelector('.shape-btn.active');
       if (btn) colorMode.setHex(parseInt(btn.dataset.color.replace('#', ''), 16));
@@ -957,13 +942,26 @@ function animate() {
   const speed = handVelocity.length();
   dataVelocity.textContent = speed.toFixed(2);
 
-  // HUD follow hand (HIDDEN as per user request to keep visuals in camera frame only)
+  // HUD follow hand
   if (isHandPresent) {
-    hudGroup.visible = false; // Forced false
+    hudGroup.visible = true;
     hudGroup.position.copy(handPosition);
-    // ... rest of HUD logic can stay but it's invisible
-  } else {
-    hudGroup.visible = false;
+    hudGroup.rotation.y += 0.04;
+    palmRing.rotation.x += 0.02;
+    palmRing.rotation.z += 0.01;
+
+    // Orbit dots
+    hudGroup.children.forEach(child => {
+      if (child.userData.orbitRadius) {
+        child.userData.angle += child.userData.orbitSpeed;
+        child.position.x = Math.cos(child.userData.angle) * child.userData.orbitRadius;
+        child.position.y = Math.sin(child.userData.angle) * child.userData.orbitRadius;
+      }
+    });
+
+    // Pulse ring scale based on gesture
+    const targetScale = isGrabbing ? 0.6 : 1.0;
+    palmRing.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
   }
 
   // Energy beam
@@ -984,47 +982,35 @@ function animate() {
     const dz = handPosition.z - posArr[i3 + 2];
     const distSq = dx * dx + dy * dy + dz * dz;
 
-    // Is this particle currently grabbed?
-    if (isGrabbing && grabbedIndices.includes(i)) {
-      // Sticky: follow hand delta exactly (Stretch effect)
-      posArr[i3] += handVelocity.x;
-      posArr[i3 + 1] += handVelocity.y;
-      posArr[i3 + 2] += handVelocity.z;
-      // Damping velocity to prevent wild release
-      velocities[i3] *= 0.1;
-      velocities[i3 + 1] *= 0.1;
-      velocities[i3 + 2] *= 0.1;
-    } else {
-      if (isHandPresent && isGrabbing) {
-        // Subtle global pull while grabbing other parts
-        const force = 0.05 / (distSq + 2.0);
-        velocities[i3] += dx * force;
-        velocities[i3 + 1] += dy * force;
-        velocities[i3 + 2] += dz * force;
-      } else if (isHandPresent && !isGrabbing && distSq < 6) {
-        // Repulsion when open hand is near
-        const repulse = -0.02 / (distSq + 0.5);
-        velocities[i3] += dx * repulse;
-        velocities[i3 + 1] += dy * repulse;
-        velocities[i3 + 2] += dz * repulse;
+    if (isHandPresent && isGrabbing) {
+      // Attraction toward hand
+      const force = 0.18 / (distSq + 0.1);
+      velocities[i3] += dx * force;
+      velocities[i3 + 1] += dy * force;
+      velocities[i3 + 2] += dz * force;
+    } else if (isHandPresent && !isGrabbing && distSq < 6) {
+      // Repulsion when open hand is near
+      const repulse = -0.02 / (distSq + 0.5);
+      velocities[i3] += dx * repulse;
+      velocities[i3 + 1] += dy * repulse;
+      velocities[i3 + 2] += dz * repulse;
 
-        // Kinetic throw from hand velocity
-        velocities[i3] += handVelocity.x * 0.08;
-        velocities[i3 + 1] += handVelocity.y * 0.08;
-        velocities[i3 + 2] += handVelocity.z * 0.08;
-      }
-
-      // Morph toward target shape
-      const morphSpeed = isGrabbing ? 0.015 : 0.04;
-      posArr[i3] += velocities[i3] + (targetArr[i3] - posArr[i3]) * morphSpeed;
-      posArr[i3 + 1] += velocities[i3 + 1] + (targetArr[i3 + 1] - posArr[i3 + 1]) * morphSpeed;
-      posArr[i3 + 2] += velocities[i3 + 2] + (targetArr[i3 + 2] - posArr[i3 + 2]) * morphSpeed;
-
-      // Damping
-      velocities[i3] *= 0.93;
-      velocities[i3 + 1] *= 0.93;
-      velocities[i3 + 2] *= 0.93;
+      // Kinetic throw from hand velocity
+      velocities[i3] += handVelocity.x * 0.08;
+      velocities[i3 + 1] += handVelocity.y * 0.08;
+      velocities[i3 + 2] += handVelocity.z * 0.08;
     }
+
+    // Morph toward target shape
+    const morphSpeed = isGrabbing ? 0.02 : 0.04;
+    posArr[i3] += velocities[i3] + (targetArr[i3] - posArr[i3]) * morphSpeed;
+    posArr[i3 + 1] += velocities[i3 + 1] + (targetArr[i3 + 1] - posArr[i3 + 1]) * morphSpeed;
+    posArr[i3 + 2] += velocities[i3 + 2] + (targetArr[i3 + 2] - posArr[i3 + 2]) * morphSpeed;
+
+    // Damping
+    velocities[i3] *= 0.93;
+    velocities[i3 + 1] *= 0.93;
+    velocities[i3 + 2] *= 0.93;
   }
 
   posAttr.needsUpdate = true;

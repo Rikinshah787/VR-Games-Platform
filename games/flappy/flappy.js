@@ -21,8 +21,7 @@
   // ═══ GAME CONSTANTS ═══
   const PIPE_WIDTH = 70;
   const PIPE_GAP = 250;          // gap between top and bottom pipe (wider = easier)
-  const PIPE_SPEED_BASE = 2.2;
-  const PIPE_SPEED_BOOST = 4.5;
+  const PIPE_SPEED = 2.2;
   const PIPE_SPACING_PX = 280;   // minimum pixel distance between pipes
   const BIRD_SIZE = 36;
   const BIRD_X = 0.2;            // bird's fixed X position (20% from left)
@@ -42,8 +41,6 @@
   let lastPipeTime = 0;
   let frameCount = 0;
   let groundOffset = 0;
-  let currentPipeSpeed = PIPE_SPEED_BASE;
-  let speedLines = [];
 
   // Finger tracking
   let fingerY = 0.5;             // normalized 0..1
@@ -137,8 +134,8 @@
       targetFingerY = y;
       fingerVisible = true;
 
-      // Update finger indicator (HIDDEN as per user request)
-      fingerIndicator.style.opacity = '0';
+      // Update finger indicator
+      fingerIndicator.style.opacity = '1';
       fingerIndicator.style.left = (x * window.innerWidth) + 'px';
       fingerIndicator.style.top = (y * window.innerHeight) + 'px';
     },
@@ -401,15 +398,7 @@
     }
   }
 
-  // ═══ SPEED LINES ═══
-  function spawnSpeedLine() {
-    speedLines.push({
-      x: bird.x - 20,
-      y: bird.y + (Math.random() - 0.5) * 60,
-      w: 40 + Math.random() * 60,
-      opacity: 0.4 + Math.random() * 0.4
-    });
-  }
+  // ═══════════════════════════════════════════════
   //  DRAWING FUNCTIONS
   // ═══════════════════════════════════════════════
 
@@ -453,7 +442,7 @@
     ctx.fillRect(0, y + 8, canvas.width, GROUND_HEIGHT);
 
     // Scrolling stripe pattern
-    if (state === 'playing') groundOffset = (groundOffset + currentPipeSpeed) % 24;
+    if (state === 'playing') groundOffset = (groundOffset + PIPE_SPEED) % 24;
     ctx.strokeStyle = 'rgba(0,0,0,0.08)';
     ctx.lineWidth = 2;
     for (let x = -groundOffset; x < canvas.width; x += 24) {
@@ -603,37 +592,6 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawSpeedLines() {
-    if (currentPipeSpeed < PIPE_SPEED_BASE + 0.5) {
-      speedLines = [];
-      return;
-    }
-
-    // Spawn new lines
-    if (Math.random() < 0.3) spawnSpeedLine();
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
-
-    for (let i = speedLines.length - 1; i >= 0; i--) {
-      const s = speedLines[i];
-      s.x -= currentPipeSpeed * 1.5;
-      s.opacity -= 0.05;
-
-      if (s.opacity <= 0 || s.x + s.w < 0) {
-        speedLines.splice(i, 1);
-        continue;
-      }
-
-      ctx.globalAlpha = s.opacity;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x + s.w, s.y);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-
   // ═══════════════════════════════════════════════
   //  GAME UPDATE
   // ═══════════════════════════════════════════════
@@ -643,10 +601,6 @@
 
     const now = Date.now();
     frameCount++;
-
-    // ── Speed boost logic ──
-    const targetSpeed = isPinching ? PIPE_SPEED_BOOST : PIPE_SPEED_BASE;
-    currentPipeSpeed += (targetSpeed - currentPipeSpeed) * 0.1;
 
     // ── Smooth finger tracking ──
     fingerY += (targetFingerY - fingerY) * FINGER_SMOOTHING;
@@ -693,7 +647,7 @@
     // ── Move & check pipes ──
     for (let i = pipes.length - 1; i >= 0; i--) {
       const p = pipes[i];
-      p.x -= currentPipeSpeed;
+      p.x -= PIPE_SPEED;
 
       // Score when passing pipe
       if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
@@ -743,18 +697,20 @@
     // Palm UI control (menus)
     updatePalmUI();
 
-    // Environment & Pipes
     drawSky();
     drawClouds();
+
+    // Pipes
     pipes.forEach(drawPipe);
+
+    // Bird
+    if (state !== 'menu') drawBird();
+
+    // Ground (on top of pipes)
     drawGround();
 
-    // Visual Effects & Bird
-    if (state !== 'menu') {
-      drawSpeedLines();
-      drawBird();
-      drawParticles();
-    }
+    // Particles
+    drawParticles();
 
     // Finger guide line (while playing)
     if (state === 'playing' && fingerVisible) {
