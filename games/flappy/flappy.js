@@ -21,7 +21,9 @@
   // ═══ GAME CONSTANTS ═══
   const PIPE_WIDTH = 70;
   const PIPE_GAP = 250;          // gap between top and bottom pipe (wider = easier)
-  const PIPE_SPEED = 2.2;
+  const BASE_PIPE_SPEED = 2.2;
+  const BOOST_PIPE_SPEED = 4.5;
+  let currentPipeSpeed = BASE_PIPE_SPEED;
   const PIPE_SPACING_PX = 280;   // minimum pixel distance between pipes
   const BIRD_SIZE = 36;
   const BIRD_X = 0.2;            // bird's fixed X position (20% from left)
@@ -442,7 +444,7 @@
     ctx.fillRect(0, y + 8, canvas.width, GROUND_HEIGHT);
 
     // Scrolling stripe pattern
-    if (state === 'playing') groundOffset = (groundOffset + PIPE_SPEED) % 24;
+    if (state === 'playing') groundOffset = (groundOffset + currentPipeSpeed) % 24;
     ctx.strokeStyle = 'rgba(0,0,0,0.08)';
     ctx.lineWidth = 2;
     for (let x = -groundOffset; x < canvas.width; x += 24) {
@@ -602,6 +604,9 @@
     const now = Date.now();
     frameCount++;
 
+    // ── Pinch Boost ──
+    currentPipeSpeed = isPinching ? BOOST_PIPE_SPEED : BASE_PIPE_SPEED;
+
     // ── Smooth finger tracking ──
     fingerY += (targetFingerY - fingerY) * FINGER_SMOOTHING;
 
@@ -647,7 +652,7 @@
     // ── Move & check pipes ──
     for (let i = pipes.length - 1; i >= 0; i--) {
       const p = pipes[i];
-      p.x -= PIPE_SPEED;
+      p.x -= currentPipeSpeed;
 
       // Score when passing pipe
       if (!p.scored && p.x + PIPE_WIDTH < bird.x) {

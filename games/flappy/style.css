@@ -108,6 +108,7 @@ body {
   height: 100%;
   pointer-events: none;
   transform: scaleX(-1);
+  object-fit: cover;
 }
 
 /* ─── BACK BUTTON ──────────────────────────── */

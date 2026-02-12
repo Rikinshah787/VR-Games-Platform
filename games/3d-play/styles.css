@@ -84,6 +84,7 @@ canvas {
   background: linear-gradient(135deg, var(--primary), var(--accent), #ff44aa);
   background-size: 300% auto;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: titleShine 4s ease infinite;
   filter: drop-shadow(0 0 20px var(--glow))
@@ -344,7 +345,8 @@ canvas {
   height: 100%;
   transform: scaleX(-1);
   pointer-events: none;
-  z-index: 1
+  z-index: 1;
+  object-fit: cover;
 }
 
 /* ─── SCANLINE OVERLAY ─────────────────────── */
